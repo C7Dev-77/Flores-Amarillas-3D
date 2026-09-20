@@ -1,0 +1,2736 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🌻 Flores Amarillas — 21 de Septiembre</title>
+    <meta name="description" content="Una tarjeta virtual especial con flores amarillas animadas para el 21 de septiembre. Hecha con amor y código por C7Dev." />
+    <meta property="og:title" content="🌻 Flores Amarillas para ti — 21 de Septiembre" />
+    <meta property="og:description" content="Un regalo especial en código" />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌻</text></svg>" />
+    
+    <!-- Google Fonts: Poppins (800, 600, 400) via CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet" />
+
+    <!-- Supresión de mensajes internos informativos de WebGL / MediaPipe en consola -->
+    <script>
+      (function() {
+        const origWarn = console.warn;
+        const origError = console.error;
+        const origInfo = console.info;
+        const isGlNoise = function(args) {
+          if (!args || !args.length) return false;
+          for (let i = 0; i < args.length; i++) {
+            const s = String(args[i] || '');
+            if (
+              s.includes('gl_context') ||
+              s.includes('gl_context_webgl') ||
+              s.includes('OpenGL') ||
+              s.includes('Successfully created a WebGL context') ||
+              /^[IWEF]\d{4}\s/.test(s)
+            ) {
+              return true;
+            }
+          }
+          return false;
+        };
+        console.warn = function(...args) {
+          if (isGlNoise(args)) return;
+          return origWarn.apply(console, args);
+        };
+        console.error = function(...args) {
+          if (isGlNoise(args)) return;
+          return origError.apply(console, args);
+        };
+        console.info = function(...args) {
+          if (isGlNoise(args)) return;
+          return origInfo.apply(console, args);
+        };
+      })();
+    </script>
+
+    <!-- Three.js via CDN (r134) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+
+    <!-- MediaPipe Hands & Camera Utils (Google) via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+      :root {
+        --c7-black: #050505;
+        --c7-yellow: #FFD700;
+        --c7-yellow-glow: #FCE700;
+        --c7-green-dark: #064600;
+        --c7-green: #1AAA15;
+        --c7-green-bright: #00FF41;  /* verde matrix C7Dev */
+        --c7-glass: rgba(255, 255, 255, 0.05);
+        --c7-glass-border: rgba(255, 215, 0, 0.3);
+        --c7-text-glow: 0 0 20px rgba(255, 215, 0, 0.8);
+        --c7-font: 'Poppins', sans-serif;
+      }
+
+      *, *::after, *::before {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--c7-black);
+        min-height: 100vh;
+        width: 100vw;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        overflow: hidden;
+        perspective: 1000px;
+        font-family: var(--c7-font);
+        color: #fff;
+        user-select: none;
+      }
+
+      /* Three.js canvas de fondo */
+      #canvas-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Capa de gradiente nocturno CSS */
+      .night {
+        position: fixed;
+        left: 50%;
+        top: 0;
+        transform: translateX(-50%);
+        width: 100%;
+        height: 100%;
+        filter: blur(0.1vmin);
+        background-image: 
+          radial-gradient(ellipse at top, rgba(255, 215, 0, 0.03) 0%, transparent 60%),
+          radial-gradient(ellipse at bottom, rgba(6, 70, 0, 0.2), var(--c7-black) 70%);
+        pointer-events: none;
+        z-index: 1;
+        transition: opacity 1.2s ease;
+      }
+
+      /* Canvas 2D para pétalos cayendo */
+      .petals-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 40;
+      }
+
+      /* Luciérnagas DOM */
+      #fireflies-container {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 25;
+      }
+      .firefly {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: radial-gradient(#FFD700, transparent);
+        filter: blur(1px);
+        box-shadow: 0 0 6px #FFD700, 0 0 12px rgba(255, 215, 0, 0.8);
+        pointer-events: none;
+        animation: firefly-float 6s ease-in-out infinite alternate, firefly-glow 2.2s ease-in-out infinite alternate;
+      }
+      @keyframes firefly-float {
+        0% { transform: translate(0, 0); }
+        50% { transform: translate(35px, -50px); }
+        100% { transform: translate(-25px, -90px); }
+      }
+      @keyframes firefly-glow {
+        0% { opacity: 0.25; transform: scale(0.8); }
+        100% { opacity: 1; transform: scale(1.4); }
+      }
+
+      /* ===================================================
+         CÓDIGO BASE DE FLORES AMARILLAS CSS PURO
+         =================================================== */
+      .flowers {
+        position: relative;
+        transform: scale(var(--hand-scale, 0.9)) rotate(var(--wind-angle, 0deg));
+        transform-origin: bottom center;
+        transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        z-index: 10;
+        pointer-events: none;
+      }
+
+      .flower {
+        position: absolute;
+        bottom: 10vmin;
+        transform-origin: bottom center;
+        z-index: 10;
+        --fl-speed: 0.8s;
+      }
+
+      .flower--1 {
+        animation: moving-flower-1 4s ease-in-out infinite;
+      }
+      .flower--1 .flower__line {
+        height: 65vmin;
+        animation-delay: 0.3s;
+      }
+      .flower--1 .flower__line__leaf--1 {
+        animation: blooming-leaf-right var(--fl-speed) 1.6s backwards;
+      }
+      .flower--1 .flower__line__leaf--2 {
+        animation: blooming-leaf-right var(--fl-speed) 1.4s backwards;
+      }
+      .flower--1 .flower__line__leaf--3 {
+        animation: blooming-leaf-left var(--fl-speed) 1.2s backwards;
+      }
+      .flower--1 .flower__line__leaf--4 {
+        animation: blooming-leaf-left var(--fl-speed) 1.0s backwards;
+      }
+      .flower--1 .flower__line__leaf--5 {
+        animation: blooming-leaf-right var(--fl-speed) 1.8s backwards;
+      }
+      .flower--1 .flower__line__leaf--6 {
+        animation: blooming-leaf-left var(--fl-speed) 2.0s backwards;
+      }
+
+      .flower--2 {
+        left: 50%;
+        transform: rotate(18deg);
+        animation: moving-flower-2 4s ease-in-out infinite;
+      }
+      .flower--2 .flower__line {
+        height: 55vmin;
+        animation-delay: 0.6s;
+      }
+      .flower--2 .flower__line__leaf--1 {
+        animation: blooming-leaf-right var(--fl-speed) 1.9s backwards;
+      }
+      .flower--2 .flower__line__leaf--2 {
+        animation: blooming-leaf-right var(--fl-speed) 1.7s backwards;
+      }
+      .flower--2 .flower__line__leaf--3 {
+        animation: blooming-leaf-left var(--fl-speed) 1.5s backwards;
+      }
+      .flower--2 .flower__line__leaf--4 {
+        animation: blooming-leaf-left var(--fl-speed) 1.3s backwards;
+      }
+
+      .flower--3 {
+        left: 50%;
+        transform: rotate(-18deg);
+        animation: moving-flower-3 4s ease-in-out infinite;
+      }
+      .flower--3 .flower__line {
+        height: 50vmin;
+        animation-delay: 0.9s;
+      }
+      .flower--3 .flower__line__leaf--1 {
+        animation: blooming-leaf-right var(--fl-speed) 2.2s backwards;
+      }
+      .flower--3 .flower__line__leaf--2 {
+        animation: blooming-leaf-right var(--fl-speed) 2.0s backwards;
+      }
+      .flower--3 .flower__line__leaf--3 {
+        animation: blooming-leaf-left var(--fl-speed) 1.8s backwards;
+      }
+      .flower--3 .flower__line__leaf--4 {
+        animation: blooming-leaf-left var(--fl-speed) 1.6s backwards;
+      }
+
+      .flower__leafs {
+        position: relative;
+        animation: blooming-flower 2s backwards;
+      }
+      .flower--1 .flower__leafs {
+        animation-delay: 1.1s;
+      }
+      .flower--2 .flower__leafs {
+        animation-delay: 1.4s;
+      }
+      .flower--3 .flower__leafs {
+        animation-delay: 1.7s;
+      }
+
+      .flower__leaf {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 8vmin;
+        height: 13vmin;
+        border-radius: 51% 49% 47% 53% / 44% 45% 55% 69%;
+        background-image: linear-gradient(to top, #ff9e00, var(--c7-yellow), var(--c7-yellow-glow));
+        transform-origin: bottom center;
+        opacity: 0.96;
+        box-shadow: inset 0 0 2vmin rgba(255, 255, 255, 0.4);
+        filter: drop-shadow(0 0 3px rgba(252, 231, 0, 0.4));
+      }
+
+      .flower__leaf--1 { transform: translate(-50%, 0) rotate(0deg); }
+      .flower__leaf--2 { transform: translate(-50%, 0) rotate(30deg); }
+      .flower__leaf--3 { transform: translate(-50%, 0) rotate(60deg); }
+      .flower__leaf--4 { transform: translate(-50%, 0) rotate(90deg); }
+      .flower__leaf--5 { transform: translate(-50%, 0) rotate(120deg); }
+      .flower__leaf--6 { transform: translate(-50%, 0) rotate(150deg); }
+      .flower__leaf--7 { transform: translate(-50%, 0) rotate(180deg); }
+      .flower__leaf--8 { transform: translate(-50%, 0) rotate(210deg); }
+      .flower__leaf--9 { transform: translate(-50%, 0) rotate(240deg); }
+      .flower__leaf--10 { transform: translate(-50%, 0) rotate(270deg); }
+      .flower__leaf--11 { transform: translate(-50%, 0) rotate(300deg); }
+      .flower__leaf--12 { transform: translate(-50%, 0) rotate(330deg); }
+
+      /* Círculo central dramático */
+      .flower__white-circle {
+        position: absolute;
+        left: -4.5vmin;
+        top: -4.5vmin;
+        width: 9vmin;
+        height: 9vmin;
+        border-radius: 50%;
+        background-image: radial-gradient(circle, #ffe600 0%, #d48806 35%, #5c3800 70%, #1a0f00 100%);
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 
+                    0 0 30px rgba(255, 215, 0, 0.3);
+        z-index: 20;
+      }
+      .flower__white-circle::after {
+        content: '';
+        position: absolute;
+        inset: 1.2vmin;
+        border-radius: 50%;
+        background-image: radial-gradient(circle, #fce700 0%, #874d00 60%, #301700 100%);
+        opacity: 0.9;
+      }
+
+      /* Tallo */
+      .flower__line {
+        height: 55vmin;
+        width: 1.6vmin;
+        background-image: linear-gradient(to left, var(--c7-green-dark), var(--c7-green), var(--c7-green-bright));
+        border-radius: 4vmin;
+        animation: grow-flower-tree 4s backwards;
+      }
+
+      /* Hojas a lo largo del tallo */
+      .flower__line__leaf {
+        --w: 7vmin;
+        --h: calc(var(--w) + 2vmin);
+        position: absolute;
+        top: 20%;
+        left: 90%;
+        width: var(--w);
+        height: var(--h);
+        border-top-right-radius: var(--h);
+        border-bottom-left-radius: var(--h);
+        background-image: linear-gradient(to top, rgba(6, 70, 0, 0.6), var(--c7-green));
+      }
+      .flower__line__leaf--1 { top: 30%; }
+      .flower__line__leaf--2 { top: 45%; }
+      .flower__line__leaf--3 {
+        top: 60%;
+        left: -450%;
+        transform: rotate(-180deg);
+      }
+      .flower__line__leaf--4 {
+        top: 75%;
+        left: -450%;
+        transform: rotate(-180deg);
+      }
+      .flower__line__leaf--5 { top: 85%; }
+      .flower__line__leaf--6 {
+        top: 15%;
+        left: -450%;
+        transform: rotate(-180deg);
+      }
+
+      /* Luces destellantes que suben */
+      .flower__light {
+        position: absolute;
+        bottom: 0vmin;
+        width: 1vmin;
+        height: 1vmin;
+        background-color: var(--c7-yellow);
+        border-radius: 50%;
+        filter: blur(0.2vmin);
+        animation: light-ans 4s linear infinite backwards;
+        box-shadow: 0 0 1vmin var(--c7-yellow-glow);
+        z-index: 15;
+      }
+      .flower__light:nth-child(odd) {
+        background-color: var(--c7-yellow-glow);
+      }
+      .flower__light--1 { left: -2vmin; animation-delay: 1.0s; }
+      .flower__light--2 { left: 3vmin; animation-delay: 0.5s; }
+      .flower__light--3 { left: -5vmin; animation-delay: 0.3s; }
+      .flower__light--4 { left: 6vmin; animation-delay: 0.9s; }
+      .flower__light--5 { left: -1vmin; animation-delay: 1.5s; }
+      .flower__light--6 { left: -4vmin; animation-delay: 3.0s; }
+      .flower__light--7 { left: 3vmin; animation-delay: 2.0s; }
+      .flower__light--8 { left: -6vmin; animation-delay: 3.5s; }
+
+      /* Follaje y césped que crece */
+      .growing-grass {
+        animation: growing-grass-ans 1.5s 1.5s backwards;
+      }
+      .flower__grass {
+        --c: var(--c7-green);
+        --line-w: 1.5vmin;
+        position: absolute;
+        bottom: 12vmin;
+        left: -7vmin;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        z-index: 5;
+        transform-origin: bottom center;
+        transform: rotate(-48deg) rotateY(40deg);
+      }
+      .flower__grass--1 {
+        animation: moving-grass 2s linear infinite;
+      }
+      .flower__grass--2 {
+        left: 2vmin;
+        bottom: 10vmin;
+        transform: scale(0.6) rotate(75deg) rotateX(10deg) rotateY(-200deg);
+        opacity: 0.8;
+        z-index: 0;
+        animation: moving-grass--2 1.5s linear infinite;
+      }
+      .flower__grass--top {
+        width: 7vmin;
+        height: 10vmin;
+        border-top-right-radius: 100%;
+        border-right: var(--line-w) solid var(--c);
+        transform-origin: bottom center;
+        transform: rotate(-2deg);
+      }
+      .flower__grass--bottom {
+        margin-top: -2px;
+        width: var(--line-w);
+        height: 25vmin;
+        background-image: linear-gradient(to top, transparent, var(--c));
+      }
+      .flower__grass__leaf {
+        --size: 10vmin;
+        position: absolute;
+        width: calc(var(--size) * 2.1);
+        height: var(--size);
+        border-top-left-radius: var(--size);
+        border-top-right-radius: var(--size);
+        background-image: linear-gradient(to top, transparent, transparent 30%, var(--c7-green-dark) 60%, var(--c7-green));
+        z-index: 1;
+      }
+      .flower__grass__leaf--1 {
+        top: -6%;
+        left: 30%;
+        --size: 6vmin;
+        transform: rotate(-20deg);
+        animation: growing-grass-ans--1 2s 2.6s backwards;
+      }
+      .flower__grass__leaf--2 {
+        top: -5%;
+        left: -110%;
+        --size: 6vmin;
+        transform: rotate(10deg);
+        animation: growing-grass-ans--2 2s 2.4s backwards;
+      }
+      .flower__grass__leaf--3 {
+        top: 5%;
+        left: 60%;
+        --size: 8vmin;
+        transform: rotate(-18deg);
+        animation: growing-grass-ans--1 2s 2.2s backwards;
+      }
+      .flower__grass__leaf--4 {
+        top: 6%;
+        left: -135%;
+        --size: 8vmin;
+        transform: rotate(2deg);
+        animation: growing-grass-ans--2 2s 2.0s backwards;
+      }
+      .flower__grass__leaf--5 {
+        top: 20%;
+        left: 60%;
+        --size: 10vmin;
+        transform: rotate(-24deg);
+        animation: growing-grass-ans--1 2s 1.8s backwards;
+      }
+      .flower__grass__leaf--6 {
+        top: 22%;
+        left: -180%;
+        --size: 10vmin;
+        transform: rotate(10deg);
+        animation: growing-grass-ans--2 2s 1.6s backwards;
+      }
+      .flower__grass__leaf--7 {
+        top: 39%;
+        left: 70%;
+        --size: 10vmin;
+        transform: rotate(-10deg);
+        animation: growing-grass-ans--1 2s 1.4s backwards;
+      }
+      .flower__grass__leaf--8 {
+        top: 40%;
+        left: -180%;
+        --size: 11vmin;
+        transform: rotate(10deg);
+        animation: growing-grass-ans--2 2s 1.2s backwards;
+      }
+
+      .flower__grass__overlay {
+        position: absolute;
+        top: -10%;
+        right: 0%;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(5, 5, 5, 0.6);
+        filter: blur(1.5vmin);
+        z-index: 100;
+      }
+
+      /* Césped largo decorativo */
+      .long-g {
+        position: absolute;
+        bottom: 25vmin;
+        left: -42vmin;
+        transform-origin: bottom left;
+      }
+      .long-g--1 {
+        bottom: 0vmin;
+        transform: scale(0.8) rotate(-5deg);
+      }
+      .long-g--1 .leaf {
+        -webkit-mask-image: linear-gradient(to top, transparent 40%, #064600 80%) !important;
+      }
+      .long-g--2 {
+        bottom: -3vmin;
+        left: 35vmin;
+        transform: scale(0.7) rotate(10deg) rotateY(180deg);
+      }
+      .long-g--2 .leaf {
+        -webkit-mask-image: linear-gradient(to top, transparent 50%, #064600 80%) !important;
+      }
+      .long-g--3 {
+        bottom: 0vmin;
+        left: -25vmin;
+        transform: scale(0.65) rotate(-15deg);
+      }
+      .long-g--4 {
+        bottom: -3vmin;
+        left: 20vmin;
+        transform: scale(0.6) rotate(15deg) rotateY(180deg);
+      }
+      .long-g .leaf {
+        --w: 15vmin;
+        --h: 40vmin;
+        --c: var(--c7-green);
+        position: absolute;
+        bottom: 0;
+        width: var(--w);
+        height: var(--h);
+        border-top-left-radius: 100%;
+        border-left: 2vmin solid var(--c);
+        -webkit-mask-image: linear-gradient(to top, transparent 20%, var(--c7-black));
+        transform-origin: bottom center;
+      }
+      .long-g .leaf--0 {
+        left: 2vmin;
+        animation: leaf-ans-1 4s linear infinite;
+      }
+      .long-g .leaf--1 {
+        --w: 5vmin;
+        --h: 60vmin;
+        animation: leaf-ans-1 4s linear infinite;
+      }
+      .long-g .leaf--2 {
+        --w: 10vmin;
+        --h: 40vmin;
+        left: -0.5vmin;
+        bottom: 5vmin;
+        transform-origin: bottom left;
+        transform: rotateY(-180deg);
+        animation: leaf-ans-2 3s linear infinite;
+      }
+      .long-g .leaf--3 {
+        --w: 5vmin;
+        --h: 30vmin;
+        left: -1vmin;
+        bottom: 3vmin;
+        transform-origin: bottom left;
+        transform: rotate(-10deg);
+        animation: leaf-ans-3 3s linear infinite;
+      }
+
+      /* Animaciones Keyframes de las Flores */
+      @keyframes grow-flower-tree {
+        0% { height: 0; border-radius: 1vmin; }
+      }
+      @keyframes blooming-flower {
+        0% { transform: scale(0); }
+      }
+      @keyframes blooming-leaf-right {
+        0% { transform-origin: left; transform: rotate(70deg) rotateY(30deg) scale(0); }
+      }
+      @keyframes blooming-leaf-left {
+        0% { transform-origin: right; transform: rotate(-70deg) rotateY(30deg) scale(0); }
+      }
+      @keyframes growing-grass-ans {
+        0% { transform: scale(0); }
+      }
+      @keyframes growing-grass-ans--1 {
+        0% { transform-origin: bottom left; transform: rotate(-20deg) scale(0); }
+      }
+      @keyframes growing-grass-ans--2 {
+        0% { transform-origin: bottom right; transform: rotate(10deg) scale(0); }
+      }
+      @keyframes moving-grass {
+        0%, 100% { transform: rotate(-48deg) rotateY(40deg); }
+        50% { transform: rotate(-44deg) rotateY(40deg); }
+      }
+      @keyframes moving-grass--2 {
+        0%, 100% { transform: scale(0.6) rotate(75deg) rotateX(10deg) rotateY(-200deg); }
+        50% { transform: scale(0.6) rotate(79deg) rotateX(10deg) rotateY(-200deg); }
+      }
+      @keyframes moving-flower-1 {
+        0%, 100% { transform: rotate(0); }
+        50% { transform: rotate(2deg); }
+      }
+      @keyframes moving-flower-2 {
+        0%, 100% { transform: rotate(18deg); }
+        50% { transform: rotate(14deg); }
+      }
+      @keyframes moving-flower-3 {
+        0%, 100% { transform: rotate(-18deg); }
+        50% { transform: rotate(-22deg); }
+      }
+      @keyframes leaf-ans-1 {
+        0%, 100% { transform: rotate(-5deg) scale(1); }
+        50% { transform: rotate(5deg) scale(1.05); }
+      }
+      @keyframes leaf-ans-2 {
+        0%, 100% { transform: rotateY(-180deg) rotate(5deg); }
+        50% { transform: rotateY(-180deg) rotate(0deg); }
+      }
+      @keyframes leaf-ans-3 {
+        0%, 100% { transform: rotate(-10deg); }
+        50% { transform: rotate(-5deg); }
+      }
+      @keyframes light-ans {
+        0% { opacity: 0; transform: translateY(0vmin); }
+        25% { opacity: 1; transform: translateY(-5vmin) translateX(-2vmin); }
+        50% { opacity: 1; transform: translateY(-15vmin) translateX(2vmin); filter: blur(0.2vmin); }
+        75% { opacity: 0.8; transform: translateY(-20vmin) translateX(-1vmin); filter: blur(0.2vmin); }
+        100% { opacity: 0; transform: translateY(-30vmin); filter: blur(1vmin); }
+      }
+
+      /* ===================================================
+         MENSAJE ROMÁNTICO — TARJETA GLASSMORPHISM SUPERIOR
+         =================================================== */
+      .message-container {
+        position: fixed;
+        top: 74px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 500;
+        width: min(720px, 94vw);
+        pointer-events: none;
+        animation: slideDown 1.2s 3.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.45s;
+      }
+      .message-container.is-collapsed {
+        opacity: 0 !important;
+        transform: translateX(-50%) translateY(-35px) scale(0.92) !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+      }
+
+      @keyframes slideDown {
+        from { transform: translateX(-50%) translateY(-40px); opacity: 0; }
+        to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+      }
+
+      .message-glass {
+        pointer-events: auto;
+        background: rgba(10, 10, 10, 0.76);
+        border: 1px solid rgba(255, 215, 0, 0.42);
+        border-radius: 24px;
+        padding: 26px 36px;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow:
+          0 0 50px rgba(255, 215, 0, 0.18),
+          0 20px 48px rgba(0, 0, 0, 0.75);
+        transition: all 0.35s ease;
+      }
+      .message-glass:hover {
+        border-color: rgba(255, 215, 0, 0.65);
+        box-shadow:
+          0 0 65px rgba(255, 215, 0, 0.3),
+          0 24px 52px rgba(0, 0, 0, 0.82);
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+      }
+
+      .card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #FFD700;
+        font-family: var(--c7-font);
+        font-size: clamp(1.2rem, 3.8vw, 1.55rem);
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        text-shadow: 0 0 18px rgba(255, 215, 0, 0.65);
+      }
+      .card-title .crown-icon {
+        font-size: 1.2em;
+        filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.85));
+      }
+      .card-title .heart-icon {
+        font-size: 1.05em;
+        animation: heartbeat 1.5s ease-in-out infinite;
+      }
+
+      .btn-card-toggle {
+        background: rgba(255, 215, 0, 0.1);
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        color: #FFD700;
+        font-family: var(--c7-font);
+        font-size: 0.76rem;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+      }
+      .btn-card-toggle:hover {
+        background: rgba(255, 215, 0, 0.22);
+        border-color: #FFD700;
+        transform: translateY(-1px);
+      }
+
+      .typewriter-box {
+        min-height: 76px;
+        line-height: 1.85;
+        margin: 10px 0 16px 0;
+      }
+
+      .typewriter-text {
+        display: inline;
+        color: #FFFFFF;
+        font-family: var(--c7-font);
+        font-size: clamp(1.04rem, 2.4vw, 1.22rem);
+        font-weight: 500;
+        letter-spacing: 0.35px;
+        line-height: 1.85;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+      }
+
+      .typewriter-cursor {
+        display: inline-block;
+        width: 2.5px;
+        height: 1.2em;
+        vertical-align: -0.15em;
+        background-color: #FFD700;
+        margin-left: 4px;
+        box-shadow: 0 0 10px #FFD700;
+        animation: cursorBlink 0.8s infinite;
+      }
+      .typewriter-cursor.cursor-finished {
+        animation: cursorFade 1.6s infinite;
+      }
+
+      @keyframes cursorBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+      @keyframes cursorFade {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 0.15; }
+      }
+
+      .card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(255, 215, 0, 0.16);
+        font-size: 0.82rem;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+
+      .footer-note {
+        color: rgba(255, 215, 0, 0.82);
+        font-weight: 600;
+        letter-spacing: 0.6px;
+        white-space: nowrap;
+        font-size: 0.84rem;
+      }
+
+      .card-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .btn-action {
+        background: rgba(255, 215, 0, 0.14);
+        border: 1px solid rgba(255, 215, 0, 0.35);
+        color: #FFD700;
+        font-family: var(--c7-font);
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 18px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
+      }
+      .btn-action:hover {
+        background: rgba(255, 215, 0, 0.28);
+        border-color: #FFD700;
+        box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+        transform: translateY(-1.5px);
+      }
+      .btn-play-audio {
+        background: rgba(255, 215, 0, 0.22) !important;
+        border-color: #FFD700 !important;
+        box-shadow: 0 0 14px rgba(255, 215, 0, 0.45) !important;
+        animation: pulse-glow-btn 2s infinite ease-in-out;
+      }
+
+      /* ===================================================
+         FIRMA C7Dev & CONTROLES ADICIONALES
+         =================================================== */
+      .c7dev-badge {
+        position: fixed;
+        bottom: 12px;
+        right: 16px;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--c7-font);
+        font-size: 0.75rem;
+        color: rgba(255, 215, 0, 0.6);
+        letter-spacing: 1px;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 215, 0, 0.15);
+      }
+      .c7dev-badge .brand {
+        font-weight: 800;
+        color: rgba(255, 215, 0, 0.9);
+      }
+      .c7dev-badge .heart {
+        animation: heartbeat 1.5s ease-in-out infinite;
+        display: inline-block;
+      }
+      @keyframes heartbeat {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.35); }
+      }
+
+      /* Controles en la esquina superior */
+      .header-controls {
+        position: fixed;
+        top: 18px;
+        right: 20px;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .header-btn {
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 215, 0, 0.35);
+        color: #FFD700;
+        font-family: var(--c7-font);
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 8px 15px;
+        border-radius: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: all 0.25s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+      }
+      .header-btn:hover {
+        background: rgba(255, 215, 0, 0.18);
+        border-color: #FFD700;
+        box-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
+        transform: translateY(-1px);
+      }
+      .header-btn:active {
+        transform: translateY(1px);
+      }
+      .header-btn.is-playing {
+        border-color: #FFD700;
+        background: rgba(255, 215, 0, 0.16);
+        box-shadow: 0 0 16px rgba(255, 215, 0, 0.4);
+      }
+      .header-btn.is-playing #sound-icon {
+        display: inline-block;
+        animation: soundPulse 1.8s infinite ease-in-out;
+      }
+      @keyframes soundPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.22); }
+      }
+
+      /* Notificación flotante de reproducción si el navegador bloquea autoplay */
+      .audio-hint {
+        position: fixed;
+        top: 68px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(10, 10, 10, 0.94);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1.5px solid #FFD700;
+        color: #FFD700;
+        padding: 9px 20px;
+        border-radius: 9999px;
+        font-size: 0.86rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 25px rgba(255, 215, 0, 0.45), 0 0 14px rgba(0, 0, 0, 0.85);
+        z-index: 1001;
+        cursor: pointer;
+        animation: pulse-glow-btn 1.8s infinite ease-in-out;
+        transition: opacity 0.35s ease, transform 0.35s ease;
+        user-select: none;
+        white-space: nowrap;
+        max-width: 90vw;
+      }
+      .audio-hint.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-50%) translateY(-15px);
+      }
+      @keyframes pulse-glow-btn {
+        0%, 100% {
+          box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+          border-color: rgba(255, 215, 0, 0.5);
+        }
+        50% {
+          box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+          border-color: #FFD700;
+        }
+      }
+
+      /* ===================================================
+         CÁMARA MÁGICA Y MEDIAPIPE (C7Dev Vision)
+         =================================================== */
+      .camera-preview-box {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        bottom: auto;
+        right: auto;
+        width: 175px;
+        background: rgba(8, 8, 8, 0.88);
+        border: 1px solid var(--c7-glass-border);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 16px rgba(255, 215, 0, 0.22);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-radius: 14px;
+        padding: 8px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        user-select: none;
+      }
+      .camera-preview-box.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-20px) scale(0.92);
+      }
+      .camera-preview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2px 4px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #FFD700;
+        letter-spacing: 0.3px;
+        cursor: grab;
+      }
+      .camera-preview-header:active {
+        cursor: grabbing;
+      }
+      .camera-status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #00FF41;
+        box-shadow: 0 0 8px #00FF41;
+        display: inline-block;
+        margin-right: 5px;
+        animation: pulse-dot 1.5s infinite;
+      }
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.85); }
+      }
+      .camera-close-btn {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+        font-size: 0.85rem;
+        padding: 1px 5px;
+        line-height: 1;
+        border-radius: 4px;
+        transition: color 0.2s, background 0.2s;
+      }
+      .camera-close-btn:hover {
+        color: #FFD700;
+        background: rgba(255, 215, 0, 0.15);
+      }
+      .camera-preview-canvas {
+        width: 100%;
+        height: 115px;
+        border-radius: 8px;
+        background: #000;
+        transform: scaleX(-1); /* Efecto espejo */
+        object-fit: cover;
+        border: 1px solid rgba(255, 215, 0, 0.25);
+      }
+      .camera-preview-hint {
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.88);
+        text-align: center;
+        font-weight: 500;
+        padding: 2px;
+        transition: all 0.2s ease;
+      }
+      .camera-preview-hint.is-pinching {
+        color: #00FF41;
+        font-weight: 700;
+        text-shadow: 0 0 8px rgba(0, 255, 65, 0.7);
+      }
+
+      /* Toast flotante instructivo */
+      .magic-toast {
+        position: fixed;
+        top: 75px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(12, 12, 12, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 215, 0, 0.6);
+        color: #FFD700;
+        padding: 9px 20px;
+        border-radius: 9999px;
+        font-size: 0.84rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(255, 215, 0, 0.35);
+        z-index: 1000;
+        transition: opacity 0.4s ease, transform 0.4s ease;
+        pointer-events: none;
+        text-align: center;
+        max-width: 90vw;
+      }
+      .magic-toast.hidden {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-15px);
+      }
+
+      /* ===================================================
+         RESPONSIVE
+         =================================================== */
+      @media (max-width: 600px) {
+        .flowers {
+          transform: scale(var(--hand-scale-mobile, 0.68)) translateY(5vmin) rotate(var(--wind-angle, 0deg));
+          transform-origin: bottom center;
+          transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .message-container {
+          top: 60px;
+          width: 95vw;
+        }
+        .message-glass {
+          padding: 18px 20px;
+          border-radius: 20px;
+        }
+        .card-header {
+          margin-bottom: 10px;
+          padding-bottom: 9px;
+        }
+        .card-title {
+          font-size: 1.15rem;
+        }
+        .typewriter-box {
+          min-height: 80px;
+          margin: 8px 0 12px 0;
+        }
+        .typewriter-text {
+          font-size: 0.94rem;
+          line-height: 1.7;
+        }
+        .card-footer {
+          flex-direction: column;
+          gap: 12px;
+          align-items: center;
+          text-align: center;
+        }
+        .footer-note {
+          white-space: normal;
+          text-align: center;
+          font-size: 0.82rem;
+        }
+        .card-actions {
+          justify-content: center;
+          width: 100%;
+          gap: 8px;
+        }
+        .btn-action {
+          padding: 5px 11px;
+          font-size: 0.74rem;
+        }
+        .c7dev-badge {
+          bottom: 8px;
+          right: 10px;
+          font-size: 0.65rem;
+        }
+        .header-controls {
+          top: 10px;
+          right: 10px;
+          gap: 5px;
+        }
+        .header-btn {
+          font-size: 0.7rem;
+          padding: 6px 9px;
+          gap: 3px;
+        }
+        .camera-preview-box {
+          top: 54px;
+          left: 12px;
+          bottom: auto;
+          right: auto;
+          width: 145px;
+          padding: 6px;
+        }
+        .camera-preview-canvas {
+          height: 98px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Three.js Canvas de Fondo -->
+    <canvas id="canvas-bg"></canvas>
+
+    <!-- Capa de Gradiente Nocturno -->
+    <div class="night"></div>
+
+    <!-- Canvas 2D para Pétalos que caen e Interacciones Mágicas -->
+    <canvas id="petals-canvas" class="petals-canvas"></canvas>
+
+    <!-- Contenedor para Luciérnagas DOM creadas por JS -->
+    <div id="fireflies-container"></div>
+
+    <!-- Elemento de Audio para la canción romántica Floricienta Flores Amarillas -->
+    <audio id="romantic-audio-player" src="/floricienta-flores-amarillas.mp3" preload="auto" loop playsinline></audio>
+    <input type="file" id="custom-audio-input" accept="audio/*" style="display: none;" onchange="handleCustomAudioUpload(event)">
+
+    <!-- Video oculto y Canvas para procesamiento de MediaPipe Hands -->
+    <video id="input_video" playsinline style="display: none;"></video>
+
+    <!-- Barra de controles superiores (Dedicatoria, Cámara Mágica y Música) -->
+    <div class="header-controls">
+      <button id="dedication-toggle-btn" class="header-btn" onclick="toggleDedication()" title="Mostrar u ocultar dedicatoria">
+        <span id="dedication-btn-icon">💌</span>
+        <span id="dedication-btn-label">Dedicatoria</span>
+      </button>
+      <button id="camera-magic-btn" class="header-btn" onclick="toggleCameraMagic(event)" title="Controlar flores con las manos usando tu cámara">
+        <span id="camera-btn-icon">🖐️</span>
+        <span id="camera-btn-label">Modo Manos</span>
+      </button>
+      <button id="sound-btn" class="header-btn btn-play-audio" onclick="toggleAudio(event)" title="Reproducir música: Flores Amarillas">
+        <span id="sound-icon">▶️</span>
+        <span id="sound-label">Play Audio</span>
+      </button>
+    </div>
+
+    <!-- Preview visual sutil de la cámara con malla de mano C7Dev -->
+    <div id="camera-preview-box" class="camera-preview-box hidden">
+      <div class="camera-preview-header">
+        <div>
+          <span class="camera-status-dot"></span>
+          <span>🖐️ C7Dev Hands</span>
+        </div>
+        <button class="camera-close-btn" onclick="toggleCameraMagic(event)" title="Cerrar cámara">✕</button>
+      </div>
+      <canvas id="output_canvas" width="240" height="180" class="camera-preview-canvas"></canvas>
+      <div id="camera-hint-text" class="camera-preview-hint">Mueve tu mano frente a la cámara ✨</div>
+    </div>
+
+    <!-- Toast instructivo flotante de MediaPipe -->
+    <div id="magic-toast" class="magic-toast hidden">
+      <span>🖐️ Mueve tu mano para mover las flores y junta tus dedos para lanzar polvillo dorado ✨</span>
+    </div>
+
+    <!-- Notificación flotante si el navegador requiere interacción para iniciar audio -->
+    <div id="audio-start-hint" class="audio-hint hidden" onclick="startRomanticMusic(event)" title="Haz clic para escuchar la canción">
+      <span>🌻 Toca aquí o en la pantalla para escuchar Flores Amarillas 🎵</span>
+    </div>
+
+    <!-- ===================================================
+         FLORES AMARILLAS ANIMADAS CSS PURO
+         =================================================== -->
+    <div class="flowers">
+      <!-- Flor 1 (Centro) -->
+      <div class="flower flower--1">
+        <div class="flower__leafs flower__leafs--1">
+          <div class="flower__leaf flower__leaf--1"></div>
+          <div class="flower__leaf flower__leaf--2"></div>
+          <div class="flower__leaf flower__leaf--3"></div>
+          <div class="flower__leaf flower__leaf--4"></div>
+          <div class="flower__leaf flower__leaf--5"></div>
+          <div class="flower__leaf flower__leaf--6"></div>
+          <div class="flower__leaf flower__leaf--7"></div>
+          <div class="flower__leaf flower__leaf--8"></div>
+          <div class="flower__leaf flower__leaf--9"></div>
+          <div class="flower__leaf flower__leaf--10"></div>
+          <div class="flower__leaf flower__leaf--11"></div>
+          <div class="flower__leaf flower__leaf--12"></div>
+          <div class="flower__white-circle"></div>
+          <div class="flower__light flower__light--1"></div>
+          <div class="flower__light flower__light--2"></div>
+          <div class="flower__light flower__light--3"></div>
+          <div class="flower__light flower__light--4"></div>
+          <div class="flower__light flower__light--5"></div>
+          <div class="flower__light flower__light--6"></div>
+          <div class="flower__light flower__light--7"></div>
+          <div class="flower__light flower__light--8"></div>
+        </div>
+        <div class="flower__line">
+          <div class="flower__line__leaf flower__line__leaf--1"></div>
+          <div class="flower__line__leaf flower__line__leaf--2"></div>
+          <div class="flower__line__leaf flower__line__leaf--3"></div>
+          <div class="flower__line__leaf flower__line__leaf--4"></div>
+          <div class="flower__line__leaf flower__line__leaf--5"></div>
+          <div class="flower__line__leaf flower__line__leaf--6"></div>
+        </div>
+      </div>
+
+      <!-- Flor 2 (Izquierda) -->
+      <div class="flower flower--2">
+        <div class="flower__leafs flower__leafs--2">
+          <div class="flower__leaf flower__leaf--1"></div>
+          <div class="flower__leaf flower__leaf--2"></div>
+          <div class="flower__leaf flower__leaf--3"></div>
+          <div class="flower__leaf flower__leaf--4"></div>
+          <div class="flower__leaf flower__leaf--5"></div>
+          <div class="flower__leaf flower__leaf--6"></div>
+          <div class="flower__leaf flower__leaf--7"></div>
+          <div class="flower__leaf flower__leaf--8"></div>
+          <div class="flower__leaf flower__leaf--9"></div>
+          <div class="flower__leaf flower__leaf--10"></div>
+          <div class="flower__leaf flower__leaf--11"></div>
+          <div class="flower__leaf flower__leaf--12"></div>
+          <div class="flower__white-circle"></div>
+          <div class="flower__light flower__light--1"></div>
+          <div class="flower__light flower__light--2"></div>
+          <div class="flower__light flower__light--3"></div>
+          <div class="flower__light flower__light--4"></div>
+          <div class="flower__light flower__light--5"></div>
+          <div class="flower__light flower__light--6"></div>
+          <div class="flower__light flower__light--7"></div>
+          <div class="flower__light flower__light--8"></div>
+        </div>
+        <div class="flower__line">
+          <div class="flower__line__leaf flower__line__leaf--1"></div>
+          <div class="flower__line__leaf flower__line__leaf--2"></div>
+          <div class="flower__line__leaf flower__line__leaf--3"></div>
+          <div class="flower__line__leaf flower__line__leaf--4"></div>
+        </div>
+      </div>
+
+      <!-- Flor 3 (Derecha) -->
+      <div class="flower flower--3">
+        <div class="flower__leafs flower__leafs--3">
+          <div class="flower__leaf flower__leaf--1"></div>
+          <div class="flower__leaf flower__leaf--2"></div>
+          <div class="flower__leaf flower__leaf--3"></div>
+          <div class="flower__leaf flower__leaf--4"></div>
+          <div class="flower__leaf flower__leaf--5"></div>
+          <div class="flower__leaf flower__leaf--6"></div>
+          <div class="flower__leaf flower__leaf--7"></div>
+          <div class="flower__leaf flower__leaf--8"></div>
+          <div class="flower__leaf flower__leaf--9"></div>
+          <div class="flower__leaf flower__leaf--10"></div>
+          <div class="flower__leaf flower__leaf--11"></div>
+          <div class="flower__leaf flower__leaf--12"></div>
+          <div class="flower__white-circle"></div>
+          <div class="flower__light flower__light--1"></div>
+          <div class="flower__light flower__light--2"></div>
+          <div class="flower__light flower__light--3"></div>
+          <div class="flower__light flower__light--4"></div>
+          <div class="flower__light flower__light--5"></div>
+          <div class="flower__light flower__light--6"></div>
+          <div class="flower__light flower__light--7"></div>
+          <div class="flower__light flower__light--8"></div>
+        </div>
+        <div class="flower__line">
+          <div class="flower__line__leaf flower__line__leaf--1"></div>
+          <div class="flower__line__leaf flower__line__leaf--2"></div>
+          <div class="flower__line__leaf flower__line__leaf--3"></div>
+          <div class="flower__line__leaf flower__line__leaf--4"></div>
+        </div>
+      </div>
+
+      <!-- Follaje en la base -->
+      <div class="growing-grass">
+        <div class="flower__grass flower__grass--1">
+          <div class="flower__grass--top"></div>
+          <div class="flower__grass--bottom"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--1"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--2"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--3"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--4"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--5"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--6"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--7"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--8"></div>
+          <div class="flower__grass__overlay"></div>
+        </div>
+      </div>
+
+      <div class="growing-grass">
+        <div class="flower__grass flower__grass--2">
+          <div class="flower__grass--top"></div>
+          <div class="flower__grass--bottom"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--1"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--2"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--3"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--4"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--5"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--6"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--7"></div>
+          <div class="flower__grass__leaf flower__grass__leaf--8"></div>
+          <div class="flower__grass__overlay"></div>
+        </div>
+      </div>
+
+      <div class="long-g long-g--0">
+        <div class="leaf leaf--0"></div>
+        <div class="leaf leaf--1"></div>
+        <div class="leaf leaf--2"></div>
+        <div class="leaf leaf--3"></div>
+      </div>
+      <div class="long-g long-g--1">
+        <div class="leaf leaf--0"></div>
+        <div class="leaf leaf--1"></div>
+        <div class="leaf leaf--2"></div>
+        <div class="leaf leaf--3"></div>
+      </div>
+      <div class="long-g long-g--2">
+        <div class="leaf leaf--0"></div>
+        <div class="leaf leaf--1"></div>
+        <div class="leaf leaf--2"></div>
+        <div class="leaf leaf--3"></div>
+      </div>
+      <div class="long-g long-g--3">
+        <div class="leaf leaf--0"></div>
+        <div class="leaf leaf--1"></div>
+        <div class="leaf leaf--2"></div>
+        <div class="leaf leaf--3"></div>
+      </div>
+      <div class="long-g long-g--4">
+        <div class="leaf leaf--0"></div>
+        <div class="leaf leaf--1"></div>
+        <div class="leaf leaf--2"></div>
+        <div class="leaf leaf--3"></div>
+      </div>
+    </div>
+
+
+
+    <!-- ===================================================
+         MENSAJE ROMÁNTICO — TARJETA GLASSMORPHISM SUPERIOR CON MÁQUINA DE ESCRIBIR
+         =================================================== -->
+    <div id="message-container" class="message-container">
+      <div class="message-glass">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="crown-icon">👑</span>
+            <span id="nombre-display">Para mi Princesa</span>
+            <span class="heart-icon">💛</span>
+          </div>
+        </div>
+
+        <div class="typewriter-box">
+          <p class="typewriter-text" id="typewriter-text"></p>
+          <span class="typewriter-cursor" id="typewriter-cursor"></span>
+        </div>
+
+        <div class="card-footer" id="card-footer">
+          <span class="footer-note">✨ while(vida) { amar(ti); } ✨</span>
+          <div class="card-actions">
+            <button onclick="replayTypewriter()" class="btn-action" title="Escribir la dedicatoria nuevamente">
+              🔄 Repetir
+            </button>
+            <button onclick="toggleCameraMagic(event)" class="btn-action" title="Interactuar con las flores usando tu mano">
+              🖐️ Modo Manos
+            </button>
+            <button id="card-audio-btn" onclick="handleCardAudioAction(event)" class="btn-action btn-play-audio" title="Reproducir canción: Flores Amarillas">
+              <span id="card-audio-icon">▶️</span>
+              <span id="card-audio-label">Play Audio</span>
+            </button>
+            <button onclick="toggleDedication()" class="btn-action" title="Ver solo las flores">
+              🌻 Ver flores
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================
+         FIRMA C7Dev
+         =================================================== -->
+    <div class="c7dev-badge">
+      <span class="heart">💛</span>
+      <span class="brand">C7Dev</span>
+    </div>
+
+    <!-- React root opcional para compatibilidad con Vite -->
+    <div id="root" style="display:none"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- ===================================================
+         SCRIPT PRINCIPAL — THREE.JS + PÉTALOS + INTERACTIVIDAD
+         =================================================== -->
+    <script>
+      /* Variables Globales */
+      let scene, camera, renderer;
+      let torus, icosa;
+      let particlesGold, starsMesh;
+      let fireflies = [];
+      let mouseTargetX = 0, mouseTargetY = 0;
+      let threeJsInitialized = false;
+      let petalsCanvas, petalsCtx, petalsAnimationId;
+      let petalsList = [];
+      let audioCtx = null, melodyPlaying = false, audioEnabled = true;
+
+      /* Variables de Dedicatoria y Máquina de Escribir */
+      let typewriterTimer = null;
+      let isTyping = false;
+      let isDedicationCollapsed = false;
+      const FULL_DEDICATION_TEXT = "Las flores reales se marchitan, así que decidí programarte unas que duren para siempre como lo nuestro. Feliz 21 de septiembre. 🌻✨";
+
+      /* Variables de Interacción Táctil (Toques Mágicos) */
+      let touchSparks = [];
+      let isPointerActive = false;
+      let lastPointerBurstTime = 0;
+
+      /* ===================================================
+         ESCENA THREE.JS (FONDO 3D)
+         =================================================== */
+      function initThreeJS() {
+        if (threeJsInitialized) return;
+        const canvas = document.getElementById('canvas-bg');
+        if (!canvas || typeof THREE === 'undefined') return;
+
+        threeJsInitialized = true;
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+
+        // Renderer transparente
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(W, H);
+        renderer.setClearColor(0x000000, 0);
+
+        // Cámara de perspectiva dramática
+        camera = new THREE.PerspectiveCamera(75, W / H, 0.1, 1000);
+        camera.position.z = 30;
+
+        scene = new THREE.Scene();
+
+        // --------------------------------------------------
+        // CAPA 1: 2000 estrellas de fondo con parpadeo
+        // --------------------------------------------------
+        const starsGeo = new THREE.BufferGeometry();
+        const starsCount = 2000;
+        const starPos = new Float32Array(starsCount * 3);
+        const starColors = new Float32Array(starsCount * 3);
+        const starPhases = new Float32Array(starsCount);
+
+        for (let i = 0; i < starsCount; i++) {
+          const r = 50 + Math.random() * 150;
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+
+          starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+          starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+          starPos[i * 3 + 2] = r * Math.cos(phi);
+
+          // Mezcla de blanco brillante y amarillo suave
+          const isYellow = Math.random() > 0.6;
+          starColors[i * 3] = 1.0;
+          starColors[i * 3 + 1] = isYellow ? 0.85 + Math.random() * 0.15 : 1.0;
+          starColors[i * 3 + 2] = isYellow ? 0.3 + Math.random() * 0.4 : 1.0;
+          starPhases[i] = Math.random() * Math.PI * 2;
+        }
+
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        starsGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+        // Textura redonda para partículas suaves
+        const starTexture = createCircleTexture('#ffffff');
+        const starsMat = new THREE.PointsMaterial({
+          size: 0.6,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.85,
+          map: starTexture,
+          depthWrite: false
+        });
+        starsMesh = new THREE.Points(starsGeo, starsMat);
+        scene.add(starsMesh);
+
+        // --------------------------------------------------
+        // CAPA 2: 300 partículas de "polvillo dorado" flotante
+        // --------------------------------------------------
+        const goldCount = 300;
+        const goldGeo = new THREE.BufferGeometry();
+        const goldPos = new Float32Array(goldCount * 3);
+        window.goldBasePos = [];
+
+        for (let i = 0; i < goldCount; i++) {
+          const gx = (Math.random() - 0.5) * 45;
+          const gy = (Math.random() - 0.5) * 35;
+          const gz = (Math.random() - 0.5) * 20;
+
+          goldPos[i * 3] = gx;
+          goldPos[i * 3 + 1] = gy;
+          goldPos[i * 3 + 2] = gz;
+
+          window.goldBasePos.push({
+            x: gx,
+            y: gy,
+            z: gz,
+            speed: 0.3 + Math.random() * 0.7,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+
+        goldGeo.setAttribute('position', new THREE.BufferAttribute(goldPos, 3));
+        const goldTexture = createCircleTexture('#FFD700');
+        const goldMat = new THREE.PointsMaterial({
+          size: 0.8,
+          color: 0xFFD700,
+          transparent: true,
+          opacity: 0.75,
+          map: goldTexture,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        });
+        particlesGold = new THREE.Points(goldGeo, goldMat);
+        scene.add(particlesGold);
+
+        // --------------------------------------------------
+        // CAPA 3: 50 "fireflies" grandes (sprites circulares con halo)
+        // --------------------------------------------------
+        const fireflyTexture = createFireflyTexture();
+        const fireflyMat = new THREE.SpriteMaterial({
+          map: fireflyTexture,
+          transparent: true,
+          opacity: 0.8,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        });
+
+        fireflies = [];
+        for (let i = 0; i < 50; i++) {
+          const sprite = new THREE.Sprite(fireflyMat.clone());
+          sprite.baseX = (Math.random() - 0.5) * 50;
+          sprite.baseY = (Math.random() - 0.5) * 35;
+          sprite.position.set(sprite.baseX, sprite.baseY, (Math.random() - 0.5) * 20);
+          sprite.speed = 0.6 + Math.random() * 1.2;
+          sprite.phase = Math.random() * Math.PI * 2;
+          sprite.range = 3 + Math.random() * 5;
+          const scale = 1.0 + Math.random() * 1.2;
+          sprite.scale.set(scale, scale, 1);
+          scene.add(sprite);
+          fireflies.push(sprite);
+        }
+
+        // --------------------------------------------------
+        // GEOMETRÍA 3D DECORATIVA
+        // Toro (anillo) giratorio detrás de las flores
+        // --------------------------------------------------
+        const torusGeometry = new THREE.TorusGeometry(8, 0.05, 16, 200);
+        const torusMaterial = new THREE.MeshBasicMaterial({
+          color: 0xFFD700,
+          transparent: true,
+          opacity: 0.18,
+          wireframe: true
+        });
+        torus = new THREE.Mesh(torusGeometry, torusMaterial);
+        torus.position.set(0, -2, -10);
+        scene.add(torus);
+
+        // Icosaedro de cristal decorativo (esquina)
+        const icosaGeometry = new THREE.IcosahedronGeometry(3.5, 1);
+        const icosaMaterial = new THREE.MeshBasicMaterial({
+          color: 0xFFD700,
+          transparent: true,
+          opacity: 0.1,
+          wireframe: true
+        });
+        icosa = new THREE.Mesh(icosaGeometry, icosaMaterial);
+        icosa.position.set(16, 10, -8);
+        scene.add(icosa);
+
+        // Eventos de Parallax y Resize
+        window.addEventListener('resize', onWindowResize, false);
+        window.addEventListener('mousemove', onMouseMove, false);
+        window.addEventListener('touchmove', onTouchMove, { passive: true });
+
+        // Iniciar loop de render
+        animateThreeJS();
+      }
+
+      function createCircleTexture(colorHex) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, colorHex);
+        grad.addColorStop(0.5, colorHex);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(32, 32, 30, 0, Math.PI * 2);
+        ctx.fill();
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function createFireflyTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        // Núcleo amarillo vibrante con halo tenue verdoso C7Dev (#00FF41)
+        const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        grad.addColorStop(0, '#FFFFFF');
+        grad.addColorStop(0.2, '#FCE700');
+        grad.addColorStop(0.55, 'rgba(255, 215, 0, 0.45)');
+        grad.addColorStop(0.8, 'rgba(0, 255, 65, 0.15)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(64, 64, 60, 0, Math.PI * 2);
+        ctx.fill();
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      function onMouseMove(e) {
+        mouseTargetX = (e.clientX / window.innerWidth - 0.5) * 3.5;
+        mouseTargetY = -(e.clientY / window.innerHeight - 0.5) * 2.5;
+      }
+      function onTouchMove(e) {
+        if (e.touches && e.touches.length > 0) {
+          mouseTargetX = (e.touches[0].clientX / window.innerWidth - 0.5) * 3.5;
+          mouseTargetY = -(e.touches[0].clientY / window.innerHeight - 0.5) * 2.5;
+        }
+      }
+
+      function onWindowResize() {
+        if (!camera || !renderer) return;
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        camera.aspect = W / H;
+        camera.updateProjectionMatrix();
+        renderer.setSize(W, H);
+        if (petalsCanvas) {
+          petalsCanvas.width = W;
+          petalsCanvas.height = H;
+        }
+      }
+
+      function animateThreeJS() {
+        requestAnimationFrame(animateThreeJS);
+        const time = Date.now() * 0.001;
+
+        // Rotar y pulsar anillo
+        if (torus) {
+          torus.rotation.x += 0.002;
+          torus.rotation.y += 0.0015;
+          const scale = 1 + 0.04 * Math.sin(time * 0.7);
+          torus.scale.set(scale, scale, scale);
+        }
+
+        // Rotar icosaedro decorativo
+        if (icosa) {
+          icosa.rotation.x += 0.003;
+          icosa.rotation.y += 0.004;
+        }
+
+        // Mover partículas de polvillo dorado (movimiento orgánico sinusoidal)
+        if (particlesGold && window.goldBasePos) {
+          const positions = particlesGold.geometry.attributes.position.array;
+          for (let i = 0; i < window.goldBasePos.length; i++) {
+            const b = window.goldBasePos[i];
+            positions[i * 3]     = b.x + Math.sin(time * b.speed + b.phase) * 1.5;
+            positions[i * 3 + 1] = b.y + Math.cos(time * b.speed * 0.8 + b.phase) * 1.2;
+            positions[i * 3 + 2] = b.z + Math.sin(time * 0.5 + b.phase) * 0.8;
+          }
+          particlesGold.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Mover fireflies en trayectorias sinusoidales
+        if (fireflies.length > 0) {
+          fireflies.forEach((ff, idx) => {
+            ff.position.x = ff.baseX + Math.sin(time * ff.speed + ff.phase) * ff.range;
+            ff.position.y = ff.baseY + Math.cos(time * ff.speed * 0.7 + ff.phase) * ff.range * 0.6;
+            ff.material.opacity = 0.45 + 0.45 * Math.sin(time * 2.5 + idx);
+          });
+        }
+
+        // Parpadeo suave y rotación de estrellas de fondo del cielo nocturno
+        if (starsMesh) {
+          starsMesh.material.opacity = 0.85;
+          starsMesh.rotation.y = time * 0.005;
+        }
+
+        // Parallax de cámara con lerp suave
+        if (camera) {
+          camera.position.x += (mouseTargetX - camera.position.x) * 0.04;
+          camera.position.y += (mouseTargetY - camera.position.y) * 0.04;
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      /* ===================================================
+         CANVAS 2D: PÉTALOS CAYENDO
+         =================================================== */
+      class Petal {
+        constructor(W, H, initialSpread = true) {
+          this.W = W;
+          this.H = H;
+          this.reset(initialSpread);
+        }
+        reset(initialSpread = false) {
+          this.x = Math.random() * this.W;
+          this.y = initialSpread ? Math.random() * this.H : -25;
+          this.size = Math.random() * 9 + 5;
+          this.speedY = Math.random() * 1.4 + 0.6;
+          this.speedX = (Math.random() - 0.5) * 0.9;
+          this.rotation = Math.random() * Math.PI * 2;
+          this.rotSpeed = (Math.random() - 0.5) * 0.06;
+          this.opacity = Math.random() * 0.55 + 0.35;
+          this.color = Math.random() > 0.4 ? '#FFD700' : '#FCE700';
+          this.sway = Math.random() * 10;
+        }
+        update() {
+          this.y += this.speedY;
+          this.x += this.speedX + Math.sin(this.y * 0.015 + this.sway) * 0.65;
+          this.rotation += this.rotSpeed;
+          if (this.y > this.H + 30) this.reset(false);
+        }
+        draw(ctx) {
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.rotate(this.rotation);
+          ctx.globalAlpha = this.opacity;
+          ctx.fillStyle = this.color;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#FFD700';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, this.size, this.size * 0.52, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function initPetals() {
+        petalsCanvas = document.getElementById('petals-canvas');
+        if (!petalsCanvas) return;
+        petalsCtx = petalsCanvas.getContext('2d');
+        petalsCanvas.width = window.innerWidth;
+        petalsCanvas.height = window.innerHeight;
+
+        petalsList = [];
+        const petalCount = window.innerWidth < 600 ? 22 : 35;
+        for (let i = 0; i < petalCount; i++) {
+          petalsList.push(new Petal(petalsCanvas.width, petalsCanvas.height, true));
+        }
+
+        if (!petalsAnimationId) {
+          loopPetals();
+        }
+      }
+
+      function loopPetals() {
+        petalsAnimationId = requestAnimationFrame(loopPetals);
+        if (!petalsCtx || !petalsCanvas) return;
+        petalsCtx.clearRect(0, 0, petalsCanvas.width, petalsCanvas.height);
+
+        // 1. Dibujar y mover pétalos que caen
+        for (let i = 0; i < petalsList.length; i++) {
+          petalsList[i].update();
+          petalsList[i].draw(petalsCtx);
+        }
+
+        // 2. Dibujar y animar toques mágicos (estrellas, destellos y anillos luminosos)
+        for (let i = touchSparks.length - 1; i >= 0; i--) {
+          const s = touchSparks[i];
+          s.alpha -= s.decay;
+          if (s.alpha <= 0) {
+            touchSparks.splice(i, 1);
+            continue;
+          }
+
+          if (s.type === 'ring') {
+            petalsCtx.save();
+            petalsCtx.beginPath();
+            petalsCtx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+            petalsCtx.strokeStyle = 'rgba(255, 215, 0, ' + s.alpha + ')';
+            petalsCtx.lineWidth = 2.2;
+            petalsCtx.shadowBlur = 12;
+            petalsCtx.shadowColor = '#FFD700';
+            petalsCtx.stroke();
+            petalsCtx.restore();
+            s.radius += (s.maxRadius - s.radius) * 0.18 + 0.8;
+          } else {
+            s.x += s.vx;
+            s.y += s.vy;
+            s.vx *= 0.94;
+            s.vy = s.vy * 0.95 + 0.12; // gravedad suave
+            s.rotation += s.rotSpeed;
+
+            petalsCtx.save();
+            petalsCtx.translate(s.x, s.y);
+            petalsCtx.rotate(s.rotation);
+            petalsCtx.globalAlpha = Math.max(0, s.alpha);
+            petalsCtx.fillStyle = s.color;
+            petalsCtx.shadowBlur = 14;
+            petalsCtx.shadowColor = s.color;
+
+            if (s.type === 'star') {
+              // Estrella centelleante de 4 puntas
+              petalsCtx.beginPath();
+              const r = s.size;
+              for (let k = 0; k < 4; k++) {
+                const a1 = (k * Math.PI) / 2;
+                const a2 = a1 + Math.PI / 4;
+                petalsCtx.lineTo(Math.cos(a1) * r, Math.sin(a1) * r);
+                petalsCtx.lineTo(Math.cos(a2) * (r * 0.32), Math.sin(a2) * (r * 0.32));
+              }
+              petalsCtx.closePath();
+              petalsCtx.fill();
+            } else if (s.type === 'petal') {
+              // Mini pétalo dorado brillante
+              petalsCtx.beginPath();
+              petalsCtx.ellipse(0, 0, s.size * 1.3, s.size * 0.65, 0, 0, Math.PI * 2);
+              petalsCtx.fill();
+            } else {
+              // Orbe brillante
+              petalsCtx.beginPath();
+              petalsCtx.arc(0, 0, s.size * 0.7, 0, Math.PI * 2);
+              petalsCtx.fill();
+            }
+            petalsCtx.restore();
+          }
+        }
+      }
+
+      /* ===================================================
+         INTERACCIÓN TÁCTIL: DESTELLOS Y BRISA MÁGICA
+         =================================================== */
+      function createMagicBurst(x, y, count = 16) {
+
+        // Brisa mágica que reacciona con los pétalos cayendo cercanos
+        for (let i = 0; i < petalsList.length; i++) {
+          const p = petalsList[i];
+          const dx = p.x - x;
+          const dy = p.y - y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 190) {
+            const force = (1 - dist / 190) * 7.5;
+            const angle = Math.atan2(dy, dx);
+            p.speedX += Math.cos(angle) * force;
+            p.speedY += Math.sin(angle) * (force * 0.45);
+            p.rotSpeed += (Math.random() - 0.5) * 0.18;
+          }
+        }
+
+        // Onda expansiva de luz
+        touchSparks.push({
+          x: x,
+          y: y,
+          radius: 8,
+          maxRadius: 85,
+          alpha: 0.95,
+          decay: 0.038,
+          type: 'ring'
+        });
+
+        // Partículas mágicas doradas celestiales
+        const colors = ['#FFF8A3', '#FFD700', '#FFE066', '#FFFFFF', '#FFEC8B'];
+
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 4.5 + 1.2;
+          const particleType = Math.random() > 0.55 ? 'star' : (Math.random() > 0.3 ? 'petal' : 'sparkle');
+          touchSparks.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.4,
+            size: Math.random() * 5 + 3.2,
+            alpha: 1.0,
+            decay: Math.random() * 0.022 + 0.016,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            type: particleType,
+            rotation: Math.random() * Math.PI * 2,
+            rotSpeed: (Math.random() - 0.5) * 0.22
+          });
+        }
+      }
+
+      /* ===================================================
+         LUCIÉRNAGAS DOM JS
+         =================================================== */
+      function createDOMFireflies() {
+        const container = document.getElementById('fireflies-container');
+        if (!container) return;
+        container.innerHTML = '';
+        for (let i = 0; i < 15; i++) {
+          const ff = document.createElement('div');
+          ff.className = 'firefly';
+          ff.style.left = `${Math.random() * 94}vw`;
+          ff.style.top = `${Math.random() * 85}vh`;
+          ff.style.animationDuration = `${4 + Math.random() * 5}s, ${1.8 + Math.random() * 3}s`;
+          ff.style.animationDelay = `${Math.random() * 4}s, ${Math.random() * 2}s`;
+          container.appendChild(ff);
+        }
+      }
+
+      /* ===================================================
+         REPRODUCTOR DE MÚSICA ROMÁNTICA — "FLORES AMARILLAS"
+         =================================================== */
+      let userMutedMusic = false;
+      let isAudioPlaying = false;
+      let musicStartedByUser = false;
+      let cardAudioState = "play"; // "play" | "playing" | "upload"
+      let cardAudioSwitchTimer = null;
+
+      function getAudioEl() {
+        return document.getElementById("romantic-audio-player");
+      }
+
+      function updateCardAudioButtonToUpload() {
+        cardAudioState = "upload";
+        const btn = document.getElementById("card-audio-btn");
+        const icon = document.getElementById("card-audio-icon");
+        const label = document.getElementById("card-audio-label");
+        if (btn) {
+          btn.classList.remove("btn-play-audio");
+          btn.setAttribute("title", "Subir o cambiar canción personalizada (MP3, WAV, M4A)");
+        }
+        if (icon) icon.textContent = "🎵";
+        if (label) label.textContent = "Cambiar audio";
+      }
+
+      function onMusicStartedByUser() {
+        musicStartedByUser = true;
+        if (cardAudioState === "play") {
+          cardAudioState = "playing";
+          const btn = document.getElementById("card-audio-btn");
+          const icon = document.getElementById("card-audio-icon");
+          const label = document.getElementById("card-audio-label");
+          if (btn) {
+            btn.classList.add("btn-play-audio");
+            btn.setAttribute("title", "Canción reproduciéndose...");
+          }
+          if (icon) icon.textContent = "🎶";
+          if (label) label.textContent = "Reproduciendo...";
+
+          // A los pocos segundos (3.5s) cambia suavemente a "Cambiar audio"
+          if (cardAudioSwitchTimer) clearTimeout(cardAudioSwitchTimer);
+          cardAudioSwitchTimer = setTimeout(() => {
+            updateCardAudioButtonToUpload();
+          }, 3500);
+        }
+      }
+
+      function handleCardAudioAction(e) {
+        if (e) {
+          try { e.stopPropagation(); } catch (_) {}
+        }
+        if (cardAudioState === "upload") {
+          // Ya se inició la música: abre el selector para subir audio propio
+          triggerAudioUpload(e);
+        } else {
+          // Inicio con Play Audio: reproduce la canción
+          startRomanticMusic(e);
+          onMusicStartedByUser();
+        }
+      }
+
+      function updateSoundUI(playing) {
+        isAudioPlaying = playing;
+        const icon = document.getElementById("sound-icon");
+        const label = document.getElementById("sound-label");
+        const btn = document.getElementById("sound-btn");
+        const hint = document.getElementById("audio-start-hint");
+
+        if (playing) {
+          if (icon) icon.textContent = "🎵";
+          if (label) label.textContent = "Música: ON";
+          if (btn) {
+            btn.classList.add("is-playing");
+            btn.classList.remove("btn-play-audio");
+            btn.setAttribute("title", "Pausar música: Floricienta - Flores Amarillas");
+          }
+          if (hint) hint.classList.add("hidden");
+        } else {
+          if (!musicStartedByUser) {
+            if (icon) icon.textContent = "▶️";
+            if (label) label.textContent = "Play Audio";
+            if (btn) {
+              btn.classList.remove("is-playing");
+              btn.classList.add("btn-play-audio");
+              btn.setAttribute("title", "Reproducir música: Floricienta - Flores Amarillas");
+            }
+          } else {
+            if (icon) icon.textContent = "🔇";
+            if (label) label.textContent = "Música: OFF";
+            if (btn) {
+              btn.classList.remove("is-playing");
+              btn.classList.remove("btn-play-audio");
+              btn.setAttribute("title", "Reanudar música: Floricienta - Flores Amarillas");
+            }
+          }
+        }
+      }
+
+      function unlockAudioContext() {
+        try {
+          if (!audioCtx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) audioCtx = new AudioCtx();
+          }
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+          }
+        } catch (_) {}
+      }
+
+      const fallbackAudioSources = [
+        "/floricienta-flores-amarillas.mp3",
+        "/floricienta-backing.mp3",
+        "/flowers.mp3",
+        "/sound/floricienta-flores-amarillas.mp3",
+        "/sound/floricienta-backing.mp3"
+      ];
+      let fallbackAudioIndex = 0;
+
+      // Sintetizador romántico Web Audio de respaldo (Modo Caja de Música / Celesta)
+      let synthMelodyTimer = null;
+      let synthIsPlaying = false;
+      function stopSynthesizedMelody() {
+        if (synthMelodyTimer) {
+          clearTimeout(synthMelodyTimer);
+          synthMelodyTimer = null;
+        }
+        synthIsPlaying = false;
+      }
+
+      function startSynthesizedMelody() {
+        if (synthIsPlaying || isAudioPlaying) return;
+        try {
+          unlockAudioContext();
+          if (!audioCtx) return;
+          synthIsPlaying = true;
+          const melodyNotes = [
+            { note: 392.00, dur: 0.35, pause: 0.1 },
+            { note: 440.00, dur: 0.35, pause: 0.1 },
+            { note: 493.88, dur: 0.55, pause: 0.15 },
+            { note: 440.00, dur: 0.35, pause: 0.1 },
+            { note: 392.00, dur: 0.55, pause: 0.2 },
+            { note: 329.63, dur: 0.55, pause: 0.2 },
+            { note: 392.00, dur: 0.75, pause: 0.3 },
+            { note: 493.88, dur: 0.35, pause: 0.1 },
+            { note: 587.33, dur: 0.65, pause: 0.25 },
+            { note: 523.25, dur: 0.55, pause: 0.2 },
+            { note: 493.88, dur: 0.55, pause: 0.2 },
+            { note: 440.00, dur: 0.85, pause: 0.4 }
+          ];
+          let noteIdx = 0;
+          function playNextNote() {
+            if (!synthIsPlaying || userMutedMusic || isAudioPlaying) return;
+            const item = melodyNotes[noteIdx % melodyNotes.length];
+            noteIdx++;
+            try {
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(item.note, audioCtx.currentTime);
+              gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.05);
+              gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + item.dur);
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.start();
+              osc.stop(audioCtx.currentTime + item.dur);
+            } catch (_) {}
+            synthMelodyTimer = setTimeout(playNextNote, (item.dur + item.pause) * 1000);
+          }
+          playNextNote();
+          updateSoundUI(true);
+        } catch (_) {}
+      }
+
+      function tryNextAudioSource() {
+        const audio = getAudioEl();
+        if (!audio) return;
+        fallbackAudioIndex++;
+        if (fallbackAudioIndex < fallbackAudioSources.length) {
+          const nextSrc = fallbackAudioSources[fallbackAudioIndex];
+          console.log("Probando fuente de audio alternativa:", nextSrc);
+          audio.src = nextSrc;
+          audio.load();
+          if (!userMutedMusic) {
+            audio.play().then(() => {
+              stopSynthesizedMelody();
+              updateSoundUI(true);
+            }).catch(() => {});
+          }
+        } else {
+          startSynthesizedMelody();
+        }
+      }
+
+      function setupAudioEngine() {
+        const audio = getAudioEl();
+        if (!audio || audio._configured) return;
+        audio._configured = true;
+
+        audio.addEventListener("play", () => {
+          stopSynthesizedMelody();
+          updateSoundUI(true);
+        });
+        audio.addEventListener("playing", () => {
+          stopSynthesizedMelody();
+          updateSoundUI(true);
+        });
+        audio.addEventListener("pause", () => {
+          if (userMutedMusic || audio.paused) {
+            updateSoundUI(false);
+          }
+        });
+        audio.addEventListener("ended", () => {
+          audio.currentTime = 0;
+          if (!userMutedMusic) {
+            audio.play().catch(() => {});
+          }
+        });
+        audio.addEventListener("error", (err) => {
+          console.warn("Fallo cargando fuente de audio, reintentando...", err);
+          tryNextAudioSource();
+        });
+      }
+
+      function startRomanticMusic(e) {
+        if (e) {
+          try { e.stopPropagation(); } catch (_) {}
+        }
+        userMutedMusic = false;
+        unlockAudioContext();
+        setupAudioEngine();
+        const audio = getAudioEl();
+        if (!audio) return;
+
+        audio.volume = 1.0;
+        audio.muted = false;
+
+        const promise = audio.play();
+        if (promise !== undefined) {
+          promise.then(() => {
+            stopSynthesizedMelody();
+            onMusicStartedByUser();
+            updateSoundUI(true);
+            const hint = document.getElementById("audio-start-hint");
+            if (hint) hint.classList.add("hidden");
+          }).catch((err) => {
+            console.log("Reproducción retenida por el navegador hasta gesto:", err);
+            updateSoundUI(false);
+            const hint = document.getElementById("audio-start-hint");
+            if (hint && !userMutedMusic) hint.classList.remove("hidden");
+          });
+        }
+      }
+
+      function pauseRomanticMusic() {
+        userMutedMusic = true;
+        stopSynthesizedMelody();
+        const audio = getAudioEl();
+        if (audio) {
+          audio.pause();
+        }
+        updateSoundUI(false);
+        const hint = document.getElementById("audio-start-hint");
+        if (hint) hint.classList.add("hidden");
+      }
+
+      function toggleAudio(e) {
+        if (e) {
+          try {
+            e.stopPropagation();
+            e.preventDefault();
+          } catch (_) {}
+        }
+        const audio = getAudioEl();
+        if (!audio) return;
+
+        if (audio.paused && !synthIsPlaying) {
+          startRomanticMusic(e);
+        } else {
+          pauseRomanticMusic();
+        }
+      }
+
+      function triggerAudioUpload(e) {
+        if (e) {
+          try { e.stopPropagation(); } catch (_) {}
+        }
+        const fileInput = document.getElementById("custom-audio-input");
+        if (fileInput) fileInput.click();
+      }
+
+      function handleCustomAudioUpload(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const audio = getAudioEl();
+        if (!audio) return;
+        try {
+          const blobUrl = URL.createObjectURL(file);
+          audio.src = blobUrl;
+          audio.load();
+          userMutedMusic = false;
+          audio.play().then(() => {
+            updateSoundUI(true);
+          }).catch((err) => {
+            console.log("Reproducción retenida por el navegador:", err);
+            updateSoundUI(false);
+          });
+
+          const toast = document.getElementById("magic-toast");
+          if (toast) {
+            toast.innerHTML = `<span>🎵 Reproduciendo canción: <strong>${file.name.substring(0, 30)}</strong></span>`;
+            toast.classList.remove("hidden");
+            setTimeout(() => toast.classList.add("hidden"), 4500);
+          }
+        } catch (err) {
+          console.error("Error al cargar audio del usuario:", err);
+        }
+      }
+
+      window.playRomanticSong = startRomanticMusic;
+      window.stopRomanticSong = pauseRomanticMusic;
+      window.getAudioElement = getAudioEl;
+      window.triggerAudioUpload = triggerAudioUpload;
+      window.handleCustomAudioUpload = handleCustomAudioUpload;
+      window.handleCardAudioAction = handleCardAudioAction;
+
+      /* ===================================================
+         INTERACCIÓN MÁGICA CON LAS MANOS (MEDIAPIPE HANDS)
+         C7Dev Vision Engine — Control por gestos y cámara web
+         =================================================== */
+      let handsInstance = null;
+      let cameraInstance = null;
+      let isCameraActive = false;
+      let isCameraStarting = false;
+
+      let targetWindAngle = 0;
+      let currentWindAngle = 0;
+      let targetScaleMult = 1.0;
+      let currentScaleMult = 1.0;
+      let lastPinchTime = 0;
+      let handPhysicsLoopId = null;
+
+      function spawnMagicDust(x, y) {
+        // Generar estallido de polvillo mágico dorado y estrellas
+        createMagicBurst(x, y, 16);
+      }
+
+      function updateHandPhysics() {
+        // Interpolación suave (lerp) para que el viento y escala respondan de forma orgánica
+        currentWindAngle += (targetWindAngle - currentWindAngle) * 0.16;
+        currentScaleMult += (targetScaleMult - currentScaleMult) * 0.14;
+
+        document.documentElement.style.setProperty('--wind-angle', `${currentWindAngle.toFixed(2)}deg`);
+        document.documentElement.style.setProperty('--hand-scale', `${(0.9 * currentScaleMult).toFixed(3)}`);
+        document.documentElement.style.setProperty('--hand-scale-mobile', `${(0.68 * currentScaleMult).toFixed(3)}`);
+
+        if (isCameraActive || Math.abs(currentWindAngle) > 0.05 || Math.abs(currentScaleMult - 1.0) > 0.01) {
+          handPhysicsLoopId = requestAnimationFrame(updateHandPhysics);
+        } else {
+          handPhysicsLoopId = null;
+          document.documentElement.style.setProperty('--wind-angle', '0deg');
+          document.documentElement.style.setProperty('--hand-scale', '0.9');
+          document.documentElement.style.setProperty('--hand-scale-mobile', '0.68');
+        }
+      }
+
+      function startHandPhysicsLoop() {
+        if (!handPhysicsLoopId) {
+          handPhysicsLoopId = requestAnimationFrame(updateHandPhysics);
+        }
+      }
+
+      function onHandResults(results) {
+        const canvasElement = document.getElementById('output_canvas');
+        if (!canvasElement) return;
+        const canvasCtx = canvasElement.getContext('2d');
+        const hintText = document.getElementById('camera-hint-text');
+
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+        if (results.image) {
+          canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+        }
+
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+          const landmarks = results.multiHandLandmarks[0];
+
+          // 1. Dibujar la malla de la mano con verde matrix C7Dev y amarillo dorado
+          if (typeof drawConnectors === 'function' && typeof HAND_CONNECTIONS !== 'undefined') {
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF41', lineWidth: 1.5 });
+          }
+          if (typeof drawLandmarks === 'function') {
+            drawLandmarks(canvasCtx, landmarks, { color: '#FFD700', lineWidth: 1, radius: 2.2 });
+          }
+
+          // 2. Movimiento del viento (Mano de lado a lado):
+          // El punto 9 es la base del dedo medio (centro de la mano)
+          const handX = landmarks[9].x; // 0.0 a 1.0
+          // Mapear a grados (-30deg a 30deg), invertido porque la cámara está en espejo
+          const angle = ((0.5 - handX) * 60);
+          targetWindAngle = Math.max(-32, Math.min(32, angle));
+
+          // 3. Crecimiento / Acercamiento (Mano hacia adelante):
+          // Medir tamaño entre muñeca (0) y base de dedo medio (9)
+          const handSize = Math.hypot(landmarks[0].x - landmarks[9].x, landmarks[0].y - landmarks[9].y);
+          // Rango típico: 0.12 (lejos) a 0.38 (muy cerca)
+          const scaleOffset = (handSize - 0.22) * 0.9;
+          targetScaleMult = Math.max(0.82, Math.min(1.26, 1.0 + scaleOffset));
+
+          // 4. Magia de Polvillo (Gesto de pellizco / Pinchar dedos):
+          // Calcular distancia entre pulgar (4) e índice (8)
+          const thumbTip = landmarks[4];
+          const indexTip = landmarks[8];
+          const pinchDistance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+
+          if (pinchDistance < 0.07) {
+            // Pellizco activo: generar estallido de polvillo dorado en coordenadas de pantalla
+            if (hintText) {
+              hintText.textContent = '✨ ¡Polvillo Mágico Activado!';
+              hintText.classList.add('is-pinching');
+            }
+
+            const now = performance.now();
+            if (now - lastPinchTime > 75) {
+              lastPinchTime = now;
+              const screenX = (1 - indexTip.x) * window.innerWidth;
+              const screenY = indexTip.y * window.innerHeight;
+              spawnMagicDust(screenX, screenY);
+            }
+          } else {
+            if (hintText) {
+              hintText.textContent = '🖐️ Mano activa · Junta índice y pulgar';
+              hintText.classList.remove('is-pinching');
+            }
+          }
+        } else {
+          // Si no hay mano, las flores vuelven suavemente a su eje central
+          targetWindAngle = 0;
+          targetScaleMult = 1.0;
+          if (hintText) {
+            hintText.textContent = 'Prueba mover tu mano frente a la cámara ✨';
+            hintText.classList.remove('is-pinching');
+          }
+        }
+
+        canvasCtx.restore();
+        startHandPhysicsLoop();
+      }
+
+      async function toggleCameraMagic(event) {
+        if (event) {
+          try {
+            event.stopPropagation();
+            event.preventDefault();
+          } catch (_) {}
+        }
+
+        const cameraBtn = document.getElementById('camera-magic-btn');
+        const cameraLabel = document.getElementById('camera-btn-label');
+        const cameraPreviewBox = document.getElementById('camera-preview-box');
+        const magicToast = document.getElementById('magic-toast');
+        const videoElement = document.getElementById('input_video');
+
+        if (isCameraActive) {
+          // Apagar cámara
+          if (cameraInstance) {
+            try {
+              await cameraInstance.stop();
+            } catch (err) {
+              console.warn('Error al detener cámara:', err);
+            }
+          }
+          if (videoElement && videoElement.srcObject) {
+            const tracks = videoElement.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+            videoElement.srcObject = null;
+          }
+          isCameraActive = false;
+          isCameraStarting = false;
+
+          if (cameraBtn) cameraBtn.classList.remove('is-playing');
+          if (cameraLabel) cameraLabel.textContent = 'Modo Manos';
+          if (cameraPreviewBox) cameraPreviewBox.classList.add('hidden');
+          if (magicToast) magicToast.classList.add('hidden');
+
+          targetWindAngle = 0;
+          targetScaleMult = 1.0;
+          startHandPhysicsLoop();
+          return;
+        }
+
+        if (isCameraStarting) return;
+        isCameraStarting = true;
+
+        if (cameraLabel) cameraLabel.textContent = 'Iniciando...';
+
+        try {
+          if (typeof Hands === 'undefined' || typeof Camera === 'undefined') {
+            console.warn('Esperando que las librerías de MediaPipe se descarguen...');
+            await new Promise(res => setTimeout(res, 800));
+            if (typeof Hands === 'undefined' || typeof Camera === 'undefined') {
+              throw new Error('Las librerías de MediaPipe aún no se han cargado por CDN.');
+            }
+          }
+
+          if (!handsInstance) {
+            handsInstance = new Hands({
+              locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            handsInstance.setOptions({
+              maxNumHands: 1, // Solo una mano para fluidez óptima
+              modelComplexity: 1,
+              minDetectionConfidence: 0.5,
+              minTrackingConfidence: 0.5
+            });
+
+            handsInstance.onResults(onHandResults);
+          }
+
+          if (!cameraInstance) {
+            cameraInstance = new Camera(videoElement, {
+              onFrame: async () => {
+                if (isCameraActive && videoElement.readyState >= 2) {
+                  await handsInstance.send({ image: videoElement });
+                }
+              },
+              width: 640,
+              height: 480
+            });
+          }
+
+          await cameraInstance.start();
+          isCameraActive = true;
+          isCameraStarting = false;
+
+          if (cameraBtn) cameraBtn.classList.add('is-playing');
+          if (cameraLabel) cameraLabel.textContent = '🖐️ Manos: ON';
+          if (cameraPreviewBox) cameraPreviewBox.classList.remove('hidden');
+
+          // Mostrar notificación flotante instructiva
+          if (magicToast) {
+            magicToast.classList.remove('hidden');
+            setTimeout(() => {
+              magicToast.classList.add('hidden');
+            }, 6000);
+          }
+
+          startHandPhysicsLoop();
+        } catch (err) {
+          console.error('Error al inicializar cámara y MediaPipe:', err);
+          isCameraActive = false;
+          isCameraStarting = false;
+          if (cameraBtn) cameraBtn.classList.remove('is-playing');
+          if (cameraLabel) cameraLabel.textContent = 'Modo Manos';
+          if (magicToast) {
+            magicToast.innerHTML = '<span>⚠️ Se requiere acceso a la cámara para la interacción mágica</span>';
+            magicToast.classList.remove('hidden');
+            setTimeout(() => {
+              magicToast.classList.add('hidden');
+            }, 5000);
+          }
+        }
+      }
+
+      function iniciarMagia() {
+        toggleCameraMagic();
+      }
+
+      window.toggleCameraMagic = toggleCameraMagic;
+      window.iniciarMagia = iniciarMagia;
+
+      // Permitir arrastrar la ventana de la cámara libremente
+      (function initDraggableCamera() {
+        const box = document.getElementById('camera-preview-box');
+        const header = box ? box.querySelector('.camera-preview-header') : null;
+        if (!box || !header) return;
+
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let initialLeft = 0, initialTop = 0;
+
+        function onDragStart(e) {
+          if (e.target.closest('.camera-close-btn')) return;
+          isDragging = true;
+          const point = e.touches ? e.touches[0] : e;
+          startX = point.clientX;
+          startY = point.clientY;
+          const rect = box.getBoundingClientRect();
+          initialLeft = rect.left;
+          initialTop = rect.top;
+          box.style.transition = 'none';
+          document.addEventListener('pointermove', onDragMove);
+          document.addEventListener('pointerup', onDragEnd);
+          document.addEventListener('touchmove', onDragMove, { passive: false });
+          document.addEventListener('touchend', onDragEnd);
+        }
+
+        function onDragMove(e) {
+          if (!isDragging) return;
+          if (e.cancelable && e.preventDefault) e.preventDefault();
+          const point = e.touches ? e.touches[0] : e;
+          const dx = point.clientX - startX;
+          const dy = point.clientY - startY;
+          const newLeft = Math.max(6, Math.min(window.innerWidth - box.offsetWidth - 6, initialLeft + dx));
+          const newTop = Math.max(6, Math.min(window.innerHeight - box.offsetHeight - 6, initialTop + dy));
+          box.style.left = `${newLeft}px`;
+          box.style.top = `${newTop}px`;
+          box.style.right = 'auto';
+          box.style.bottom = 'auto';
+        }
+
+        function onDragEnd() {
+          if (!isDragging) return;
+          isDragging = false;
+          box.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          document.removeEventListener('pointermove', onDragMove);
+          document.removeEventListener('pointerup', onDragEnd);
+          document.removeEventListener('touchmove', onDragMove);
+          document.removeEventListener('touchend', onDragEnd);
+        }
+
+        header.addEventListener('pointerdown', onDragStart);
+        header.addEventListener('touchstart', onDragStart, { passive: true });
+      })();
+
+      /* ===================================================
+         DEDICATORIA PERSONALIZADA — MÁQUINA DE ESCRIBIR
+         =================================================== */
+      function startTypewriter(instant = false) {
+        const textElem = document.getElementById('typewriter-text');
+        const cursorElem = document.getElementById('typewriter-cursor');
+        if (!textElem) return;
+
+        if (typewriterTimer) {
+          clearInterval(typewriterTimer);
+          typewriterTimer = null;
+        }
+
+        if (instant) {
+          textElem.textContent = FULL_DEDICATION_TEXT;
+          if (cursorElem) cursorElem.classList.add('cursor-finished');
+          isTyping = false;
+          return;
+        }
+
+        textElem.textContent = '';
+        if (cursorElem) cursorElem.classList.remove('cursor-finished');
+        isTyping = true;
+
+        let charIndex = 0;
+        typewriterTimer = setInterval(() => {
+          if (charIndex < FULL_DEDICATION_TEXT.length) {
+            textElem.textContent += FULL_DEDICATION_TEXT.charAt(charIndex);
+            charIndex++;
+          } else {
+            clearInterval(typewriterTimer);
+            typewriterTimer = null;
+            isTyping = false;
+            if (cursorElem) {
+              cursorElem.classList.add('cursor-finished');
+            }
+          }
+        }, 38);
+      }
+
+      function replayTypewriter() {
+        if (isDedicationCollapsed) {
+          toggleDedication();
+        }
+        startTypewriter(false);
+      }
+
+      function toggleDedication() {
+        const container = document.getElementById('message-container');
+        const toggleIcon = document.getElementById('toggle-icon');
+        const toggleText = document.getElementById('toggle-text');
+        const headerBtnLabel = document.getElementById('dedication-btn-label');
+        if (!container) return;
+
+        isDedicationCollapsed = !isDedicationCollapsed;
+        if (isDedicationCollapsed) {
+          // Ocultar completamente la caja de texto para que desaparezca de la pantalla
+          container.classList.add('is-collapsed');
+          if (toggleIcon) toggleIcon.textContent = '📖';
+          if (toggleText) toggleText.textContent = 'Mostrar';
+          if (headerBtnLabel) headerBtnLabel.textContent = 'Mostrar';
+        } else {
+          container.classList.remove('is-collapsed');
+          if (toggleIcon) toggleIcon.textContent = '👁️';
+          if (toggleText) toggleText.textContent = 'Ocultar';
+          if (headerBtnLabel) headerBtnLabel.textContent = 'Dedicatoria';
+          if (!isTyping) {
+            startTypewriter(false);
+          }
+        }
+      }
+
+      /* ===================================================
+         LISTENERS DE INTERACCIÓN TÁCTIL (PÉTALOS Y ESTRELLAS)
+         =================================================== */
+      function handlePointerTouch(e) {
+        // Ignorar clics en botones o tarjetas interactivas
+        if (e.target && (e.target.closest('button') || e.target.closest('.message-glass') || e.target.closest('.header-controls') || e.target.closest('#camera-preview-box'))) {
+          return;
+        }
+        createMagicBurst(e.clientX, e.clientY, 18);
+      }
+
+      function handlePointerMove(e) {
+        if (!isPointerActive) return;
+        if (e.target && (e.target.closest('button') || e.target.closest('.message-glass') || e.target.closest('.header-controls') || e.target.closest('#camera-preview-box'))) {
+          return;
+        }
+        const now = performance.now();
+        if (now - lastPointerBurstTime > 65) {
+          lastPointerBurstTime = now;
+          createMagicBurst(e.clientX, e.clientY, 5);
+        }
+      }
+
+      window.addEventListener('pointerdown', (e) => {
+        isPointerActive = true;
+        handlePointerTouch(e);
+      });
+      window.addEventListener('pointermove', (e) => {
+        handlePointerMove(e);
+      });
+      window.addEventListener('pointerup', () => {
+        isPointerActive = false;
+      });
+      window.addEventListener('pointercancel', () => {
+        isPointerActive = false;
+      });
+
+      /* ===================================================
+         INICIO AUTOMÁTICO DE LA EXPERIENCIA
+         =================================================== */
+      let experienceStarted = false;
+
+      function startExperience() {
+        if (experienceStarted) return;
+        experienceStarted = true;
+
+        initThreeJS();
+        initPetals();
+        createDOMFireflies();
+        setupAudioEngine();
+
+        // Iniciar máquina de escribir cuando las flores hayan florecido
+        setTimeout(() => {
+          startTypewriter(false);
+        }, 2800);
+      }
+
+      window.addEventListener('DOMContentLoaded', startExperience);
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        startExperience();
+      }
+
+      function reiniciar() {
+        location.reload();
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "Flores Amarillas",
+  "description": "Experiencia interactiva con flores amarillas animadas en CSS, Three.js 3D, pétalos cayendo y dedicatoria personalizada para el 21 de Septiembre.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
